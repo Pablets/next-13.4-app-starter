@@ -1,0 +1,223 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+import langParser from 'accept-language-parser';
+
+import {
+	defaultLocale,
+	locales,
+	getLocalePartsFrom,
+	ValidLocale,
+} from './i18n';
+
+const findBestMatchingLocale = (acceptLangHeader: string | null) => {
+	// parse the locales acceptable in the header, and sort them by priority (q)
+	const parsedLangs = langParser.parse(acceptLangHeader || undefined);
+	// find the first locale that matches a locale in our list
+	for (let i = 0; i < parsedLangs.length; i++) {
+		const parsedLang = parsedLangs[i];
+		// attempt to match the language
+		const matchedLanguage = locales.find((pathname) => {
+			const localeParts = getLocalePartsFrom({ pathname });
+			return parsedLang.code === localeParts.lang;
+		});
+		if (matchedLanguage) {
+			return matchedLanguage;
+		}
+	}
+	// if we didn't find a match, return the default locale
+	return defaultLocale;
+};
+
+function middleware(request: NextRequest) {
+    const matches =
+      !matcher ||
+      matcher.some((pattern) => request.nextUrl.pathname.match(pattern));
+    if (!matches) return NextResponse.next();
+
+    const {locale} = resolveLocale(
+      configWithDefaults,
+      request.headers,
+      request.cookies,
+      request.nextUrl.pathname
+    );
+
+    const isRoot = request.nextUrl.pathname === ROOT_URL;
+    const hasOutdatedCookie =
+      request.cookies.get(COOKIE_LOCALE_NAME)?.value !== locale;
+    const hasMatchedDefaultLocale = locale === configWithDefaults.defaultLocale;
+
+    const domainConfigs =
+      configWithDefaults.domains?.filter((curDomain) =>
+        isLocaleSupportedOnDomain(locale, curDomain)
+      ) || [];
+    const hasUnknownHost = configWithDefaults.domains != null;
+
+    function getResponseInit() {
+      const responseInit = {
+        request: {
+          headers: request.headers
+        }
+      };
+
+      return responseInit;
+    }
+
+    function rewrite(url: string) {
+      return NextResponse.rewrite(new URL(url, request.url), getResponseInit());
+    }
+
+    function next() {
+      return NextResponse.next(getResponseInit());
+    }
+
+    function redirect(url: string, host?: string) {
+      const urlObj = new URL(url, request.url);
+
+      if (host) {
+        urlObj.host = host;
+      }
+
+      return NextResponse.redirect(urlObj.toString());
+    }
+
+    let response;
+    if (isRoot) {
+      let pathWithSearch = `/${locale}`;
+      if (request.nextUrl.search) {
+        pathWithSearch += request.nextUrl.search;
+      }
+
+      if (
+        hasMatchedDefaultLocale &&
+        configWithDefaults.localePrefix === 'as-needed'
+      ) {
+        response = rewrite(pathWithSearch);
+      } else {
+        response = redirect(pathWithSearch);
+      }
+    } else {
+      const pathLocaleCandidate = getLocaleFromPathname(
+        request.nextUrl.pathname
+      );
+      const pathLocale = configWithDefaults.locales.includes(
+        pathLocaleCandidate
+      )
+        ? pathLocaleCandidate
+        : undefined;
+      const hasLocalePrefix = pathLocale != null;
+
+      let pathWithSearch = request.nextUrl.pathname;
+      if (request.nextUrl.search) {
+        pathWithSearch += request.nextUrl.search;
+      }
+
+      if (hasLocalePrefix) {
+        const basePath = pathWithSearch.replace(`/${pathLocale}`, '') || '/';
+
+        if (pathLocale === locale) {
+          if (
+            hasMatchedDefaultLocale &&
+            configWithDefaults.localePrefix === 'as-needed'
+          ) {
+            response = redirect(basePath);
+          } else {
+            if (configWithDefaults.domains) {
+              const pathDomain = getBestMatchingDomain(
+                undefined,
+                pathLocale,
+                domainConfigs
+              );
+
+              if (pathDomain?.domain && !hasUnknownHost) {
+                response = redirect(basePath, pathDomain?.domain);
+              } else {
+                response = next();
+              }
+            } else {
+              response = next();
+            }
+          }
+        } else {
+          response = redirect(`/${locale}${basePath}`);
+        }
+      } else {
+        if (
+          hasMatchedDefaultLocale &&
+          (configWithDefaults.localePrefix === 'as-needed' ||
+            configWithDefaults.domains)
+        ) {
+          response = rewrite(`/${locale}${pathWithSearch}`);
+        } else {
+          response = redirect(`/${locale}${pathWithSearch}`);
+        }
+      }
+    }
+
+    if (hasOutdatedCookie) {
+      response.cookies.set(COOKIE_LOCALE_NAME, locale, {
+        sameSite: 'strict'
+      });
+    }
+
+    if (
+      configWithDefaults.alternateLinks &&
+      configWithDefaults.locales.length > 1
+    ) {
+      response.headers.set(
+        'Link',
+        getAlternateLinksHeaderValue(configWithDefaults, request)
+      );
+    }
+
+    return response;
+  };
+
+
+export const config = {
+	matcher: [
+		// Skip all internal paths (_next)
+		// "/((?!api|_next/static|_next/image|assets|favicon.ico).*)",
+		'/((?!api|_next|.*\\..*).*)',
+	],
+};
+
+
+
+// export function middleware(request: NextRequest) {
+// 	// Check if there is any supported locale in the pathname
+// 	const pathname = request.nextUrl.pathname;
+// 	const pathnameWithoutLocale = pathname.replace(
+// 		`/${defaultLocale}`,
+// 		pathname === `/${defaultLocale}` ? '/' : ''
+// 	);
+
+// 	// Check if the default locale is in the pathname
+// 	if (
+// 		pathname.startsWith(`/${defaultLocale}/`) ||
+// 		pathname === `/${defaultLocale}`
+// 	) {
+// 		// e.g. incoming request is /en/products
+// 		// The new URL is now /products
+// 		return NextResponse.redirect(new URL(pathnameWithoutLocale, request.url));
+// 	}
+
+// 	const pathnameIsMissingLocale = locales.every(
+// 		(locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
+// 	);
+
+// 	if (pathnameIsMissingLocale) {
+// 		// We are on the default locale
+// 		// Rewrite so Next.js understands
+// 		const langHeader = request.headers.get('accept-language');
+// 		const matchingLocale = findBestMatchingLocale(langHeader);
+
+// 		if (matchingLocale === defaultLocale) {
+// 		}
+
+// 		// e.g. incoming request is /products
+// 		// Tell Next.js it should pretend it's /en/products
+// 		return NextResponse.rewrite(
+// 			new URL(`/${defaultLocale}${pathname}`, request.url)
+// 		);
+// 	}
+// }

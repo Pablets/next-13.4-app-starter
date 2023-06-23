@@ -1,0 +1,11 @@
+{
+  "HEAD": {
+    "TITLE": "Ejemplo | Inicio",
+    "META_DESCRIPTION": "Ejemplo Inc."
+  },
+  "MAIN": {
+    "TITLE": "Titulo en español",
+    "DESCRIPTION_DESKTOP": "Descripcion <strong>en</strong>, español.",
+    "BTN_PRIMARY": "Contactanos"
+  }
+}

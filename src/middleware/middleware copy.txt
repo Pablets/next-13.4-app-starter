@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+import langParser from 'accept-language-parser';
+
+import {
+	defaultLocale,
+	locales,
+	getLocalePartsFrom,
+	ValidLocale,
+} from './i18n';
+
+const findBestMatchingLocale = (acceptLangHeader: string | null) => {
+	// parse the locales acceptable in the header, and sort them by priority (q)
+	const parsedLangs = langParser.parse(acceptLangHeader || undefined);
+	// find the first locale that matches a locale in our list
+	for (let i = 0; i < parsedLangs.length; i++) {
+		const parsedLang = parsedLangs[i];
+		// attempt to match the language
+		const matchedLanguage = locales.find((pathname) => {
+			const localeParts = getLocalePartsFrom({ pathname });
+			return parsedLang.code === localeParts.lang;
+		});
+		if (matchedLanguage) {
+			return matchedLanguage;
+		}
+	}
+	// if we didn't find a match, return the default locale
+	return defaultLocale;
+};
+
+export function middleware(request: NextRequest) {
+	// Check if there is any supported locale in the pathname
+	const pathname = request.nextUrl.pathname;
+	const pathnameWithoutLocale = pathname.replace(
+		`/${defaultLocale}`,
+		pathname === `/${defaultLocale}` ? '/' : ''
+	);
+
+	// Check if the default locale is in the pathname
+	if (
+		pathname.startsWith(`/${defaultLocale}/`) ||
+		pathname === `/${defaultLocale}`
+	) {
+		// e.g. incoming request is /en/products
+		// The new URL is now /products
+		return NextResponse.redirect(new URL(pathnameWithoutLocale, request.url));
+	}
+
+	const pathnameIsMissingLocale = locales.every(
+		(locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
+	);
+
+	if (pathnameIsMissingLocale) {
+		// We are on the default locale
+		// Rewrite so Next.js understands
+		const langHeader = request.headers.get('accept-language');
+		const matchingLocale = findBestMatchingLocale(langHeader);
+
+		if (matchingLocale === defaultLocale) {
+		}
+
+		// e.g. incoming request is /products
+		// Tell Next.js it should pretend it's /en/products
+		return NextResponse.rewrite(
+			new URL(`/${defaultLocale}${pathname}`, request.url)
+		);
+	}
+}
+
+export const config = {
+	matcher: [
+		// Skip all internal paths (_next)
+		// "/((?!api|_next/static|_next/image|assets|favicon.ico).*)",
+		'/((?!api|_next|.*\\..*).*)',
+	],
+};

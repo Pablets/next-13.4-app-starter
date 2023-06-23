@@ -1,0 +1,3 @@
+export enum CookiesKeys {
+  LOADING_ANIMATION_SEEN = 'LOADING_ANIMATION_SEEN',
+}
