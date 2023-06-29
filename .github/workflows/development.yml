@@ -41,6 +41,7 @@ jobs:
         run: npm run test:coverage
 
   chromatic-deployment:
+    if: ${{false == true}}
     runs-on: ubuntu-latest
     needs: setup-and-test
     steps:
@@ -114,6 +115,7 @@ jobs:
         run: npx semantic-release
 
   Deploy-Preview:
+    if: ${{false == true}}
     needs: setup-and-test
     runs-on: ubuntu-latest
     # if: ${{!contains(github.event.head_commit.message, '[skip ci]')}}
@@ -146,3 +148,22 @@ jobs:
           GITHUB_DEPLOYMENT_ENV: Preview
           PRODUCTION: false # Don't deploy to production environment
           PR_PREVIEW_DOMAIN: 'xoor-2023-dev-{SHA}.vercel.app'
+
+  Deploy-Preview-amond:
+    needs: setup-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      deployments: write
+    steps:
+      - uses: actions/checkout@v2
+      - uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }} # Required
+          github-token: ${{ secrets.GITHUB_TOKEN }} #Optional
+          vercel-org-id: ${{ secrets.USER_ID}} #Required
+          vercel-project-id: ${{ secrets.PROJECT_ID}} #Required
+          alias-domains: | #Optional
+            staging-{{PR_NUMBER}}.vercel.app
