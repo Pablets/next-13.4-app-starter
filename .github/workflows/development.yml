@@ -180,14 +180,12 @@ jobs:
       - run: |
           npm run ci
           npx vercel pull --yes --token=${VERCEL_TOKEN}
-        working-directory: example/nextjs
         env:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_NEXTJS }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       - run: |
           npx vercel build
-        working-directory: example/nextjs
         env:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_NEXTJS }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
