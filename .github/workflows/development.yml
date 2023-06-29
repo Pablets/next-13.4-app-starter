@@ -179,7 +179,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build project
-        run: npm run build
+        run: |
+          vercel build
+        if: github.event_name == 'pull_request_target'
+        env:
+          VERCEL_PROJECT_ID: ${{ secrets.PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.USER_ID }}
       - name: production or not
         id: prod_or_not
         run: |
