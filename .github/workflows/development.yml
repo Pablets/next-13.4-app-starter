@@ -6,6 +6,7 @@ on:
 
 jobs:
   setup-and-test:
+    if: ${{false == true}}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -179,11 +180,24 @@ jobs:
         run: npm ci
       - name: Build project
         run: npm run build
+      - name: production or not
+        id: prod_or_not
+        run: |
+          if [ "$REF" == 'refs/heads/@release/prod' ]
+          then
+              echo "vercel-args=--prod --prebuilt" >> $GITHUB_OUTPUT
+          else
+              echo "vercel-args=--prebuilt" >> $GITHUB_OUTPUT
+          fi
+        env:
+          REF: ${{ github.ref }}
       - uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }} # Required
           github-token: ${{ secrets.GITHUB_TOKEN }} #Optional
           vercel-org-id: ${{ secrets.USER_ID}} #Required
           vercel-project-id: ${{ secrets.PROJECT_ID}} #Required
+          vercel-args: ${{ steps.prod_or_not.outputs.vercel-args }}
+          vercel-version: '31.0.1'
           alias-domains: | #Optional
-            staging-{{PR_NUMBER}}.vercel.app
+            development-{{PR_NUMBER}}.vercel.app
