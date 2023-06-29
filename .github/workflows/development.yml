@@ -185,9 +185,9 @@ jobs:
         run: |
           if [ "$REF" == 'refs/heads/@release/prod' ]
           then
-              echo "vercel-args=--prod --prebuilt" >> $GITHUB_OUTPUT
+              echo "vercel-args=-y --prod --prebuilt" >> $GITHUB_OUTPUT
           else
-              echo "vercel-args=--prebuilt" >> $GITHUB_OUTPUT
+              echo "vercel-args=-y --prebuilt" >> $GITHUB_OUTPUT
           fi
         env:
           REF: ${{ github.ref }}
