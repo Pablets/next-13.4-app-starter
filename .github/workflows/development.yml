@@ -159,11 +159,14 @@ jobs:
       deployments: write
     steps:
       - uses: actions/checkout@v2
+      #  your build commands
+      - run: |
+          npm run build
       - uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }} # Required
           github-token: ${{ secrets.GITHUB_TOKEN }} #Optional
           vercel-org-id: ${{ secrets.USER_ID}} #Required
           vercel-project-id: ${{ secrets.PROJECT_ID}} #Required
-          # alias-domains: | #Optional
-          #   staging-{{PR_NUMBER}}.vercel.app
+          alias-domains: | #Optional
+            staging-{{PR_NUMBER}}.vercel.app
