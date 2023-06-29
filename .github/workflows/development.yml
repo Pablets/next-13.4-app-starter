@@ -178,7 +178,7 @@ jobs:
       ##### Install dependencies
       - uses: actions/checkout@v3
       - run: |
-          npm run ci
+          npm ci
           npx vercel pull --yes --token=${VERCEL_TOKEN}
         env:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_NEXTJS }}
