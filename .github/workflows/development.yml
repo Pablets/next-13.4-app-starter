@@ -151,7 +151,7 @@ jobs:
           PR_PREVIEW_DOMAIN: 'xoor-2023-dev-{SHA}.vercel.app'
 
   Deploy-Preview-amond:
-    needs: setup-and-test
+    # needs: setup-and-test
     runs-on: ubuntu-latest
     permissions:
       contents: write
